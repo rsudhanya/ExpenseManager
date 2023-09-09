@@ -8,9 +8,12 @@ using ExpenseManager.Service.Services.Contracts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
+using System.Xml.Linq;
 
 namespace ExpenseManager.Api
 {
@@ -22,11 +25,13 @@ namespace ExpenseManager.Api
                                                     .AddJsonFile("appsettings.json")
                                                     .Build();
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            await ConfigureMongoDb();
+
             var mongoDbIdentityConfig = GetMongoDbIdentitySettings();
             builder.Services.ConfigureMongoDbIdentity<ApplicationUser, ApplicationRole, Guid>(mongoDbIdentityConfig)
                 .AddUserManager<UserManager<ApplicationUser>>()
@@ -85,7 +90,50 @@ namespace ExpenseManager.Api
         }
 
         /// <summary>
-        /// It is used to get the settings value for MongoDB
+        /// This method is used to configure the MongoDb like setting unique key
+        /// </summary>
+        /// <returns></returns>
+        private static async Task ConfigureMongoDb()
+        {
+            var client = new MongoClient(Configuration.GetConnectionString("databaseConnectionString"));
+            var database = client.GetDatabase(Configuration.GetConnectionString("databaseName"));
+            var indexOptions = new CreateIndexOptions
+            {
+                Unique = true,
+            };
+
+            var categories = database.GetCollection<BsonDocument>("Categories");
+            var indexesCursor = await categories.Indexes.ListAsync();
+            var indexes = await indexesCursor.ToListAsync();
+            if (!indexes.Any())
+            {
+                var indexKeys = Builders<BsonDocument>.IndexKeys.Combine(
+                Builders<BsonDocument>.IndexKeys.Ascending("CategoryName"),
+                Builders<BsonDocument>.IndexKeys.Ascending("UserId"));
+                var indexModel = new CreateIndexModel<BsonDocument>(indexKeys, indexOptions);
+                var _ = await categories.Indexes.CreateOneAsync(indexModel);
+            }
+
+            //var expenses = database.GetCollection<BsonDocument>("Expenses");
+            //indexesCursor = await expenses.Indexes.ListAsync();
+            //indexes = await indexesCursor.ToListAsync();
+            //if (!indexes.Any())
+            //{
+            //    var indexKeys = Builders<BsonDocument>.IndexKeys.Combine(
+            //    Builders<BsonDocument>.IndexKeys.Ascending("DateTimeStamp"),
+            //    Builders<BsonDocument>.IndexKeys.Ascending("Statement"),
+            //    Builders<BsonDocument>.IndexKeys.Ascending("SubExpenseName"),
+            //    Builders<BsonDocument>.IndexKeys.Ascending("UserId"));
+            //    var indexModels = new List<CreateIndexModel<BsonDocument>>
+            //    {
+            //        new CreateIndexModel<BsonDocument>(indexKeys, indexOptions)
+            //    };
+            //    var _ = await categories.Indexes.CreateOneAsync(indexModel);
+            //}
+        }
+
+        /// <summary>
+        /// It is used to get the settings value for MongoDbIdentity
         /// </summary>
         /// <returns></returns>
         private static MongoDbIdentityConfiguration GetMongoDbIdentitySettings()

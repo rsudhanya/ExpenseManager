@@ -10,6 +10,12 @@ namespace ExpenseManager.Common
         //Authentication
         public const string INVALID_CREDENTIALS = "Invalid credentials. Email/Password mismatch or do not exist.";
         public const string USER_EXIST_EMAIL = "The user already exists with this email";
+        public const string INVALID_AUTHORIZATION_TOKEN = "Unable to fetch authorization header or bearer token";
+        public const string INVALID_USERID = "Invalid user id";
+
+        //Category
+        public const string CATEGORY_NOT_FOUND = "Category not found; Invalid categoryId or userId";
+        public const string CATEGORY_EXIST = "Categories already exist";
 
         //Generic
         public const string DATA_NOT_PROVIDED = "Data not provided";
